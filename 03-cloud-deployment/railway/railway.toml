@@ -11,11 +11,12 @@ builder = "NIXPACKS"
 
 [deploy]
 # ✅ Start command — Railway inject PORT tự động
-startCommand = "uvicorn app:app --host 0.0.0.0 --port $PORT"
+startCommand = "python app.py"
 
 # Health check — Railway restart nếu fail
 healthcheckPath = "/health"
-healthcheckTimeout = 30
+healthcheckTimeout = 100
+numReplicas = 1
 
 # Tự động restart khi crash
 restartPolicyType = "ON_FAILURE"
