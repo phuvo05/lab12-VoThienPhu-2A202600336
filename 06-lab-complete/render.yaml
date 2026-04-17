@@ -1,73 +1,39 @@
-# ============================================================
-# render.yaml — Infrastructure as Code for Render
-# Production-ready AI Agent with Redis
-# ============================================================
-
 services:
-  # ──────────────────────────────────────
-  # Web Service — AI Agent
-  # ──────────────────────────────────────
-  - type: web
-    name: production-ai-agent
-    runtime: python
-    region: singapore
-    plan: free
-    
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2
-    
-    healthCheckPath: /health
-    autoDeploy: true
-    
-    envVars:
-      - key: ENVIRONMENT
-        value: production
-      - key: APP_NAME
-        value: Production AI Agent
-      - key: APP_VERSION
-        value: "1.0.0"
-      - key: LLM_MODEL
-        value: gpt-4o-mini
-      - key: RATE_LIMIT_PER_MINUTE
-        value: "20"
-      - key: DAILY_BUDGET_USD
-        value: "5.0"
-      - key: DEBUG
-        value: "false"
-      
-      # Secrets — set manually in Render Dashboard
-      - key: AGENT_API_KEY
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: JWT_SECRET
-        sync: false
-    
-    # Connect to Redis service
-    envVars:
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: agent-redis
-          property: connectionString
-
-  # ──────────────────────────────────────
-  # Redis Cache
-  # ──────────────────────────────────────
+  # Redis service
   - type: redis
-    name: agent-redis
+    name: ai-agent-redis
     plan: free
     maxmemoryPolicy: allkeys-lru
     ipAllowList: []
 
-# ============================================================
-# Deployment Instructions:
-# 1. Push code to GitHub
-# 2. Render Dashboard → New → Blueprint
-# 3. Connect GitHub repo
-# 4. Set environment variables in dashboard:
-#    - AGENT_API_KEY: your-secure-key
-#    - OPENAI_API_KEY: sk-... (optional)
-#    - JWT_SECRET: your-jwt-secret
-# 5. Deploy!
-# ============================================================
+  # Web service
+  - type: web
+    name: ai-agent-app
+    env: docker
+    plan: free
+    healthCheckPath: /health
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: ai-agent-redis
+          property: connectionString
+      - key: REDIS_ENABLED
+        value: true
+      - key: API_KEY
+        generateValue: true
+        sync: false
+      - key: ADMIN_API_KEY
+        generateValue: true
+        sync: false
+      - key: RATE_LIMIT_REQUESTS
+        value: 10
+      - key: RATE_LIMIT_WINDOW
+        value: 60
+      - key: MONTHLY_COST_LIMIT
+        value: 10.0
+      - key: DEBUG
+        value: false

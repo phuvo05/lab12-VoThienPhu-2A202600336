@@ -1,33 +1,55 @@
-version: "3.9"
+version: '3.8'
 
 services:
-  agent:
-    build: .
+  redis:
+    image: redis:7-alpine
+    container_name: ai-agent-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-agent-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-agent-app
     ports:
       - "8000:8000"
     environment:
-      - ENVIRONMENT=staging
-      - APP_NAME=Production AI Agent
-      - REDIS_URL=redis://redis:6379/0
-    env_file:
-      - .env.local
+      - PORT=8000
+      - REDIS_URL=redis://redis:6379
+      - REDIS_ENABLED=true
+      - API_KEY=${API_KEY:-test-api-key-12345}
+      - ADMIN_API_KEY=${ADMIN_API_KEY:-admin-key-67890}
+      - RATE_LIMIT_REQUESTS=10
+      - RATE_LIMIT_WINDOW=60
+      - MONTHLY_COST_LIMIT=10.0
+      - DEBUG=false
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c",
-             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 15s
+      start_period: 10s
+    networks:
+      - ai-agent-network
     restart: unless-stopped
 
-  redis:
-    image: redis:7-alpine
-    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  ai-agent-network:
+    driver: bridge

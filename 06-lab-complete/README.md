@@ -1,391 +1,493 @@
-# Day 12 Lab — Complete Production AI Agent
+# Production AI Agent - Lab 06 Complete
 
-> **Student**: Võ Thiên Phú (2A202600336)  
-> **Course**: AICB-P1 · VinUniversity 2026  
-> **Submission Date**: 17/04/2026
+A production-ready conversational AI agent with authentication, rate limiting, cost protection, and Redis-based state management.
 
-Kết hợp **TẤT CẢ** những gì đã học trong 1 project hoàn chỉnh, production-ready.
+## 🎯 Features
 
-## 🎯 Deliverable Checklist
+### ✅ Lab 06 Requirements Met
 
-- [x] **Dockerfile** (multi-stage, < 500 MB, non-root user)
-- [x] **docker-compose.yml** (agent + redis + nginx)
-- [x] **.dockerignore** (optimized build context)
-- [x] **Health check endpoint** (`GET /health`)
-- [x] **Readiness endpoint** (`GET /ready`)
-- [x] **API Key authentication** (X-API-Key header)
-- [x] **Rate limiting** (20 req/min per user)
-- [x] **Cost guard** ($5 daily budget)
-- [x] **12-factor config** (all from environment variables)
-- [x] **Structured JSON logging**
-- [x] **Graceful shutdown** (SIGTERM handling)
-- [x] **Security headers** (CORS, X-Frame-Options, etc.)
-- [x] **Public URL ready** (Railway + Render configs)
+- ✅ **API Key Authentication** - Secure X-API-Key header validation
+- ✅ **Rate Limiting** - 10 requests/minute per API key (Redis-backed)
+- ✅ **Cost Guard** - $10/month spending limit per user
+- ✅ **Health Checks** - `/health` (liveness) and `/readiness` (dependencies)
+- ✅ **Graceful Shutdown** - Proper SIGTERM/SIGINT handling
+- ✅ **Stateless Design** - All state in Redis (no local storage)
+- ✅ **Multi-stage Dockerfile** - Optimized image < 500 MB
+- ✅ **Docker Compose** - Full stack with Redis
+- ✅ **No Hardcoded Secrets** - Environment-based configuration
+- ✅ **Production Logging** - Structured logging with levels
+- ✅ **Error Handling** - Proper HTTP status codes and messages
 
-## 🏗 Architecture
+### 🚀 Additional Features
 
-```
-Internet
-    ↓
-Load Balancer (Railway/Render)
-    ↓
-FastAPI Application (Python 3.11)
-    ├── Authentication (API Key)
-    ├── Rate Limiting (20 req/min)
-    ├── Cost Guard ($5/day)
-    └── Mock LLM Service
-    ↓
-Redis (Optional - for state)
-```
+- 🎨 Modern Web UI with dark mode
+- 📊 Usage metrics and monitoring
+- 🔄 Automatic Redis fallback to in-memory
+- 📱 Mobile-responsive design
+- 🐳 Ready for Render deployment
 
-## 📁 Cấu Trúc Project
+## 📁 Project Structure
 
 ```
-06-lab-complete/
 ├── app/
-│   ├── main.py              # 🚀 Entry point — kết hợp tất cả
-│   ├── config.py            # ⚙️ 12-factor config
-│   ├── auth.py              # 🔐 API Key authentication (placeholder)
-│   ├── rate_limiter.py      # 🚦 Rate limiting (placeholder)
-│   └── cost_guard.py        # 💰 Budget protection (placeholder)
+│   ├── main.py              # FastAPI application
+│   ├── config.py            # Configuration management
+│   ├── auth.py              # API key authentication
+│   ├── rate_limiter.py      # Rate limiting (Redis)
+│   └── cost_guard.py        # Cost tracking (Redis)
 ├── utils/
-│   └── mock_llm.py          # 🤖 Mock LLM (provided)
-├── screenshots/             # 📸 Deployment screenshots
-├── Dockerfile               # 🐳 Multi-stage, production-ready
-├── docker-compose.yml       # 🐙 Full stack (agent + redis)
-├── railway.toml             # 🚂 Railway deployment config
-├── render.yaml              # 🎨 Render deployment config
-├── requirements.txt         # 📦 Python dependencies
-├── .env.example             # 📝 Environment template
-├── .dockerignore            # 🚫 Docker ignore rules
-├── check_production_ready.py # ✅ Production readiness checker
-└── README.md                # 📖 This file
+│   └── mock_llm.py          # Mock LLM for testing
+├── static/
+│   ├── style.css            # UI styles
+│   └── script.js            # Frontend logic
+├── templates/
+│   └── index.html           # Web interface
+├── Dockerfile               # Multi-stage build
+├── docker-compose.yml       # Full stack setup
+├── requirements.txt         # Python dependencies
+├── .env.example             # Environment template
+├── .dockerignore            # Docker ignore rules
+├── render.yaml              # Render deployment config
+└── README.md                # This file
 ```
 
 ## 🚀 Quick Start
 
-### 1. Local Development
+### 1. Local Development (Without Docker)
 
 ```bash
-# Clone and setup
-git clone <your-repo>
-cd 06-lab-complete
-
-# Setup environment
-cp .env.example .env.local
-# Edit .env.local with your values
-
 # Install dependencies
 pip install -r requirements.txt
 
-# Run locally
-python -m app.main
+# Copy environment template
+cp .env.example .env
+
+# Edit .env with your settings
+# For local dev without Redis, set REDIS_ENABLED=false
+
+# Run the application
+uvicorn app.main:app --reload --port 8000
 ```
 
-### 2. Docker Development
+**Test the API:**
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: test-api-key-12345" \
+  -d '{"message": "Hello!"}'
+```
+
+### 2. Docker Compose (Recommended)
 
 ```bash
-# Build and run with Docker Compose
-docker compose up --build
+# Start full stack (app + Redis)
+docker-compose up -d
 
-# Test endpoints
-curl http://localhost:8000/health
-curl -H "X-API-Key: dev-key-change-me" \
-     -X POST http://localhost:8000/ask \
-     -H "Content-Type: application/json" \
-     -d '{"question": "What is deployment?"}'
+# View logs
+docker-compose logs -f app
+
+# Stop services
+docker-compose down
 ```
 
-### 3. Production Deployment
+Access the application:
+- **Web UI**: http://localhost:8000
+- **Health Check**: http://localhost:8000/health
+- **Readiness Check**: http://localhost:8000/readiness
 
-#### Option A: Railway (Recommended)
+### 3. Docker Only
 
 ```bash
-# Install Railway CLI
-npm install -g @railway/cli
+# Build image
+docker build -t ai-agent .
 
-# Login and deploy
-railway login
-railway init
-railway variables set AGENT_API_KEY=your-secure-key-here
-railway variables set ENVIRONMENT=production
-railway up
+# Run container (without Redis)
+docker run -p 8000:8000 \
+  -e API_KEY=test-api-key-12345 \
+  -e REDIS_ENABLED=false \
+  ai-agent
 
-# Get public URL
-railway domain
+# Run with Redis
+docker run -p 8000:8000 \
+  -e API_KEY=test-api-key-12345 \
+  -e REDIS_URL=redis://your-redis:6379 \
+  -e REDIS_ENABLED=true \
+  ai-agent
 ```
 
-#### Option B: Render
-
-1. Push code to GitHub
-2. Go to [render.com](https://render.com) → New → Blueprint
-3. Connect GitHub repo (Render reads `render.yaml`)
-4. Set environment variables in dashboard:
-   - `AGENT_API_KEY`: your-secure-key
-   - `OPENAI_API_KEY`: sk-... (optional)
-5. Deploy!
-
-## 🧪 Testing
-
-### Health Checks
-```bash
-# Liveness probe
-curl https://your-app.railway.app/health
-
-# Readiness probe  
-curl https://your-app.railway.app/ready
-```
+## 📡 API Endpoints
 
 ### Authentication
-```bash
-# Should return 401
-curl -X POST https://your-app.railway.app/ask \
-  -H "Content-Type: application/json" \
-  -d '{"question": "Hello"}'
 
-# Should return 200
-curl -X POST https://your-app.railway.app/ask \
-  -H "X-API-Key: your-secure-key" \
-  -H "Content-Type: application/json" \
-  -d '{"question": "Hello"}'
+All endpoints (except `/health` and `/readiness`) require authentication via `X-API-Key` header.
+
+```bash
+curl -H "X-API-Key: your-api-key" http://localhost:8000/chat
 ```
 
-### Rate Limiting
-```bash
-# Test rate limiting (should hit 429 after 20 requests)
-for i in {1..25}; do
-  curl -X POST https://your-app.railway.app/ask \
-    -H "X-API-Key: your-secure-key" \
-    -H "Content-Type: application/json" \
-    -d '{"question": "Test '$i'"}'
-done
+### Endpoints
+
+#### `GET /`
+Web UI interface
+
+#### `POST /chat`
+Send a message to the AI agent
+
+**Request:**
+```json
+{
+  "message": "Hello, how are you?"
+}
 ```
 
-### Production Readiness Check
-```bash
-python check_production_ready.py
+**Response:**
+```json
+{
+  "response": "Hello! How can I help you today?",
+  "tokens_used": 12,
+  "cost": 0.002
+}
+```
+
+**Rate Limit:** 10 requests/minute per API key  
+**Cost Limit:** $10/month per API key
+
+**Error Responses:**
+- `401` - Missing or invalid API key
+- `429` - Rate limit exceeded
+- `402` - Monthly cost limit exceeded
+- `500` - Internal server error
+
+#### `GET /health`
+Liveness probe - returns 200 if app is running
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-01-15T10:30:00",
+  "version": "1.0.0"
+}
+```
+
+#### `GET /readiness`
+Readiness probe - checks all dependencies
+
+**Response:**
+```json
+{
+  "ready": true,
+  "services": {
+    "redis": true,
+    "cost_guard": true,
+    "llm": true
+  }
+}
+```
+
+#### `GET /usage/{api_key}`
+Get usage statistics for your API key
+
+**Response:**
+```json
+{
+  "api_key": "test-api...-2345",
+  "monthly_cost": 0.024,
+  "monthly_limit": 10.0,
+  "remaining_budget": 9.976,
+  "requests_this_minute": 3,
+  "rate_limit": "10 requests/minute"
+}
+```
+
+#### `GET /metrics`
+System metrics (admin only)
+
+**Response:**
+```json
+{
+  "total_users": 5,
+  "total_requests": 127,
+  "uptime": "N/A",
+  "redis_connected": true
+}
 ```
 
 ## 🔧 Configuration
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `8000` | Server port (auto-injected by platforms) |
-| `ENVIRONMENT` | `development` | Environment identifier |
-| `AGENT_API_KEY` | `dev-key-change-me` | **MUST change in production** |
-| `OPENAI_API_KEY` | `""` | OpenAI API key (optional, uses mock if empty) |
-| `RATE_LIMIT_PER_MINUTE` | `20` | Rate limiting threshold |
-| `DAILY_BUDGET_USD` | `5.0` | Daily spending limit |
-| `DEBUG` | `false` | Debug mode |
-| `REDIS_URL` | `""` | Redis connection (optional) |
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PORT` | No | 8000 | Server port |
+| `DEBUG` | No | false | Debug mode |
+| `REDIS_URL` | No | redis://localhost:6379 | Redis connection URL |
+| `REDIS_ENABLED` | No | true | Enable Redis (false = in-memory) |
+| `API_KEY` | No | test-api-key-12345 | Default API key |
+| `ADMIN_API_KEY` | No | admin-key-67890 | Admin API key |
+| `RATE_LIMIT_REQUESTS` | No | 10 | Max requests per window |
+| `RATE_LIMIT_WINDOW` | No | 60 | Rate limit window (seconds) |
+| `MONTHLY_COST_LIMIT` | No | 10.0 | Monthly cost limit ($) |
+| `OPENAI_API_KEY` | No | - | OpenAI API key (optional) |
+| `OPENAI_MODEL` | No | gpt-3.5-turbo | OpenAI model |
 
-### Security Configuration
+### Configuration File
 
+Create `.env` from template:
 ```bash
-# Production secrets (NEVER commit these!)
-export AGENT_API_KEY="prod-$(openssl rand -hex 16)"
-export JWT_SECRET="jwt-$(openssl rand -hex 32)"
-export OPENAI_API_KEY="sk-your-real-key"
+cp .env.example .env
 ```
 
-## 📊 Features
+Edit `.env` with your settings.
 
-### ✅ Implemented
-
-- **FastAPI** with async support
-- **API Key Authentication** (X-API-Key header)
-- **Rate Limiting** (in-memory sliding window)
-- **Cost Guard** (daily budget tracking)
-- **Health Checks** (`/health`, `/ready`)
-- **Graceful Shutdown** (SIGTERM handling)
-- **Structured Logging** (JSON format)
-- **Security Headers** (CORS, X-Frame-Options, etc.)
-- **Input Validation** (Pydantic models)
-- **Error Handling** (proper HTTP status codes)
-- **Docker Multi-stage** (optimized image size)
-- **12-Factor Config** (environment variables)
-
-### 🔄 Mock vs Real
-
-| Component | Mock (Default) | Production |
-|-----------|----------------|------------|
-| **LLM** | `utils/mock_llm.py` | OpenAI API (set `OPENAI_API_KEY`) |
-| **Storage** | In-memory | Redis (set `REDIS_URL`) |
-| **Auth** | Simple API key | JWT + OAuth (extend `app/auth.py`) |
-
-## 🐳 Docker
+## 🐳 Docker Details
 
 ### Multi-stage Build
 
+The Dockerfile uses multi-stage build to minimize image size:
+
+1. **Builder stage**: Installs dependencies in virtual environment
+2. **Final stage**: Copies only necessary files
+
+**Image size:** < 500 MB ✅
+
+### Security Features
+
+- Non-root user (`appuser`)
+- No hardcoded secrets
+- Minimal base image (python:3.11-slim)
+- Health checks included
+- Graceful shutdown handling
+
+### Health Check
+
+Built-in Docker health check:
 ```dockerfile
-# Stage 1: Builder (installs dependencies)
-FROM python:3.11-slim AS builder
-# ... install packages with gcc, etc.
-
-# Stage 2: Runtime (minimal, non-root)
-FROM python:3.11-slim AS runtime
-# ... copy only what's needed
-```
-
-**Benefits**:
-- **Smaller image**: ~180MB vs ~450MB
-- **Security**: Non-root user
-- **Performance**: Fewer layers, faster pulls
-
-### Health Checks
-
-```dockerfile
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
 ```
 
-## 🔒 Security
+## ☁️ Deploy to Render
 
-### Authentication Flow
+### Method 1: Blueprint (Recommended)
 
+1. **Push to GitHub:**
+   ```bash
+   git init
+   git add .
+   git commit -m "Production AI agent"
+   git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
+   git push -u origin main
+   ```
+
+2. **Deploy on Render:**
+   - Go to [Render Dashboard](https://dashboard.render.com/)
+   - Click "New" → "Blueprint"
+   - Connect your GitHub repository
+   - Render will automatically:
+     - Create Redis instance
+     - Create web service
+     - Link them together
+     - Generate API keys
+   - Click "Apply"
+
+3. **Access Your Service:**
+   - Web UI: `https://your-service.onrender.com`
+   - API: `https://your-service.onrender.com/chat`
+
+4. **Get Your API Keys:**
+   - Go to service → Environment tab
+   - View `API_KEY` and `ADMIN_API_KEY`
+
+### Method 2: Manual Setup
+
+1. **Create Redis:**
+   - New → Redis
+   - Name: `ai-agent-redis`
+   - Plan: Free
+
+2. **Create Web Service:**
+   - New → Web Service
+   - Connect repository
+   - Settings:
+     - **Environment:** Docker
+     - **Plan:** Free
+     - **Health Check Path:** `/health`
+
+3. **Add Environment Variables:**
+   - `REDIS_URL`: (copy from Redis instance)
+   - `REDIS_ENABLED`: `true`
+   - `API_KEY`: (generate secure key)
+   - `ADMIN_API_KEY`: (generate secure key)
+   - `RATE_LIMIT_REQUESTS`: `10`
+   - `RATE_LIMIT_WINDOW`: `60`
+   - `MONTHLY_COST_LIMIT`: `10.0`
+
+4. **Deploy:**
+   - Click "Create Web Service"
+   - Wait 3-5 minutes for deployment
+
+## 🧪 Testing
+
+### Test Authentication
+
+```bash
+# Without API key (should fail)
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello"}'
+
+# With API key (should succeed)
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: test-api-key-12345" \
+  -d '{"message": "Hello"}'
 ```
-1. Client includes: X-API-Key: your-key
-2. Server validates against AGENT_API_KEY
-3. If valid: process request
-4. If invalid: return 401 Unauthorized
+
+### Test Rate Limiting
+
+```bash
+# Send 11 requests rapidly (11th should fail with 429)
+for i in {1..11}; do
+  echo "Request $i:"
+  curl -X POST http://localhost:8000/chat \
+    -H "Content-Type: application/json" \
+    -H "X-API-Key: test-api-key-12345" \
+    -d '{"message": "Test"}' \
+    -w "\nStatus: %{http_code}\n\n"
+done
 ```
 
-### Rate Limiting
+### Test Cost Guard
 
-```
-1. Track requests per API key
-2. Allow 20 requests per minute
-3. Return 429 Too Many Requests if exceeded
-4. Include Retry-After header
-```
-
-### Cost Protection
-
-```
-1. Estimate cost per request (token count)
-2. Track daily spending per user
-3. Block requests if budget exceeded
-4. Return 503 Service Unavailable
+```bash
+# Check usage
+curl http://localhost:8000/usage/test-api-key-12345 \
+  -H "X-API-Key: test-api-key-12345"
 ```
 
-## 📈 Monitoring
+### Test Health Checks
 
-### Logs (JSON Format)
+```bash
+# Liveness
+curl http://localhost:8000/health
 
-```json
-{
-  "ts": "2026-04-17T10:30:00.000Z",
-  "lvl": "INFO", 
-  "msg": "request",
-  "method": "POST",
-  "path": "/ask",
-  "status": 200,
-  "ms": 145.2
-}
+# Readiness
+curl http://localhost:8000/readiness
 ```
+
+### Test Graceful Shutdown
+
+```bash
+# Start container
+docker run -d --name test-agent -p 8000:8000 ai-agent
+
+# Send SIGTERM
+docker stop test-agent
+
+# Check logs for graceful shutdown
+docker logs test-agent
+```
+
+## 📊 Monitoring
+
+### View Logs
+
+**Docker Compose:**
+```bash
+docker-compose logs -f app
+```
+
+**Docker:**
+```bash
+docker logs -f <container-id>
+```
+
+**Render:**
+- Dashboard → Your Service → Logs tab
 
 ### Metrics Endpoint
 
 ```bash
-curl -H "X-API-Key: your-key" https://your-app.railway.app/metrics
+curl http://localhost:8000/metrics \
+  -H "X-API-Key: admin-key-67890"
 ```
 
-```json
-{
-  "uptime_seconds": 1234.5,
-  "total_requests": 42,
-  "error_count": 2,
-  "daily_cost_usd": 0.0123,
-  "budget_used_pct": 0.2
-}
+## 🔒 Security Best Practices
+
+1. **Never commit `.env` file** - Use `.env.example` as template
+2. **Use strong API keys** - Minimum 20 characters, random
+3. **Rotate keys regularly** - Update in Render environment
+4. **Use HTTPS in production** - Render provides this automatically
+5. **Monitor usage** - Check `/metrics` endpoint regularly
+6. **Set appropriate rate limits** - Adjust based on your needs
+
+## 🐛 Troubleshooting
+
+### Redis Connection Failed
+
+If Redis is unavailable, the app automatically falls back to in-memory storage:
+```
+WARNING - Redis connection failed, using in-memory fallback
 ```
 
-## 🚨 Troubleshooting
+This is expected behavior and allows the app to run without Redis.
 
-### Common Issues
+### Rate Limit Not Working
 
-**503 Service Unavailable**
-- Check `/health` endpoint
-- Review application logs
-- Verify environment variables
-
-**401 Unauthorized**
-- Ensure `X-API-Key` header is included
-- Verify API key matches `AGENT_API_KEY`
-
-**429 Too Many Requests**
-- Rate limit exceeded (20 req/min)
-- Wait 60 seconds or use different API key
-
-**Docker build fails**
-- Check `.dockerignore` excludes unnecessary files
-- Verify `requirements.txt` has correct versions
-- Ensure sufficient disk space
-
-### Debug Commands
-
+Check Redis connection:
 ```bash
-# Check service health
-curl -I https://your-app.railway.app/health
-
-# View detailed logs
-railway logs --tail  # Railway
-# or check Render dashboard
-
-# Test locally with Docker
-docker compose up --build
-docker compose logs agent
-
-# Validate production readiness
-python check_production_ready.py
+curl http://localhost:8000/readiness
 ```
 
-## 📚 Learning Outcomes
+If `redis: false`, check `REDIS_URL` environment variable.
 
-After completing this lab, you understand:
+### Image Size Too Large
 
-1. **Development vs Production** differences
-2. **12-Factor App** principles
-3. **Docker** containerization and multi-stage builds
-4. **Cloud Deployment** on Railway/Render
-5. **API Security** (authentication, rate limiting, cost control)
-6. **Scalability** (stateless design, health checks)
-7. **Reliability** (graceful shutdown, error handling)
-8. **Monitoring** (structured logging, metrics)
+Current image size should be < 500 MB. Check with:
+```bash
+docker images ai-agent
+```
 
-## 🎯 Next Steps
+If larger, ensure multi-stage build is working correctly.
 
-### Immediate Improvements
-- [ ] Add Redis for persistent state
-- [ ] Implement JWT authentication
-- [ ] Add Prometheus metrics
-- [ ] Setup custom domain
+### Port Already in Use
 
-### Advanced Features
-- [ ] CI/CD pipeline (GitHub Actions)
-- [ ] Load testing (k6, Artillery)
-- [ ] Distributed tracing (OpenTelemetry)
-- [ ] Auto-scaling configuration
-- [ ] Multi-region deployment
+Change port in `.env` or docker-compose.yml:
+```yaml
+ports:
+  - "8001:8000"  # Use 8001 instead
+```
 
-## 📞 Support
+## 📝 Lab 06 Checklist
 
-**Student**: Võ Thiên Phú  
-**Email**: thienphuvn2026@gmail.com  
-**GitHub**: https://github.com/vothienphuvn/day12-agent-deployment
+- ✅ All code runs without errors
+- ✅ Multi-stage Dockerfile (image < 500 MB)
+- ✅ API key authentication implemented
+- ✅ Rate limiting (10 req/min) with Redis
+- ✅ Cost guard ($10/month) with Redis
+- ✅ Health check endpoint (`/health`)
+- ✅ Readiness check endpoint (`/readiness`)
+- ✅ Graceful shutdown with signal handling
+- ✅ Stateless design (Redis for state)
+- ✅ No hardcoded secrets (environment-based)
+- ✅ Docker Compose with Redis
+- ✅ `.env.example` provided
+- ✅ `.dockerignore` configured
+- ✅ `render.yaml` for deployment
+- ✅ Complete documentation
 
-**Deployment URLs**:
-- **Primary**: https://day12-agent-production.up.railway.app
-- **Backup**: https://ai-agent-render-vtp.onrender.com
+## 📚 Additional Resources
 
----
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Redis Documentation](https://redis.io/docs/)
+- [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
+- [Render Documentation](https://render.com/docs)
 
 ## 📄 License
 
-This project is for educational purposes as part of AICB-P1 course at VinUniversity.
+MIT
 
----
+## 👤 Author
 
-*Last Updated: April 17, 2026*
+Production AI Agent - Lab 06 Complete

@@ -1,49 +1,41 @@
-# ============================================================
-# Production Dockerfile — Multi-stage, < 500 MB, non-root
-# ============================================================
-
-# Stage 1: Builder
-FROM python:3.11-slim AS builder
-
-WORKDIR /build
-
-RUN apt-get update && apt-get install -y gcc libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
-
-
-# Stage 2: Runtime
-FROM python:3.11-slim AS runtime
-
-# Non-root user
-RUN groupadd -r agent && useradd -r -g agent -d /app agent
+# Multi-stage build for optimized image size
+FROM python:3.11-slim as builder
 
 WORKDIR /app
 
-# Copy packages từ builder
-COPY --from=builder /root/.local /home/agent/.local
+# Install dependencies in a virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy application
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Final stage
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy application code
 COPY app/ ./app/
 COPY utils/ ./utils/
+COPY static/ ./static/
+COPY templates/ ./templates/
 
-RUN chown -R agent:agent /app
+# Create non-root user
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
 
-USER agent
+USER appuser
 
-ENV PATH=/home/agent/.local/bin:$PATH
-ENV PYTHONPATH=/app
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
 
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD python -c \
-    "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" \
-    || exit 1
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# Graceful shutdown with proper signal handling
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --timeout-graceful-shutdown 10"]

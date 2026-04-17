@@ -1,0 +1,11 @@
+# Screenshots directory
+# Add your deployment screenshots here:
+# - dashboard.png
+# - running.png
+# - logs.png
+# - health_check.png
+# - auth_test.png
+# - rate_limit.png
+# - cost_guard.png
+# - docker_build.png
+# - redis_connected.png
